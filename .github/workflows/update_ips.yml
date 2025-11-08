@@ -1,42 +1,42 @@
-name: Update Telecom IPs
+name: Update China Telecom IPs
 
 on:
   schedule:
-    - cron: '0 * * * *'   # 每小时运行一次
-  workflow_dispatch:       # 允许手动触发
+    - cron: "0 * * * *"  # 每小时执行一次
+  workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Install Chrome and dependencies
+      - name: Install Chrome and matching ChromeDriver
         run: |
           sudo apt update
           sudo apt install -y wget unzip
           wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo apt install -y ./google-chrome-stable_current_amd64.deb
-          wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip
-          unzip /tmp/chromedriver.zip -d /usr/local/bin/
+          # 自动检测 Chrome 主版本号
+          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+' | head -1)
+          echo "Detected Chrome version: $CHROME_VERSION"
+          DRIVER_VERSION=$(curl -sS "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_$CHROME_VERSION")
+          echo "Using ChromeDriver version: $DRIVER_VERSION"
+          wget -O /tmp/chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/${DRIVER_VERSION}/linux64/chromedriver-linux64.zip"
+          unzip /tmp/chromedriver.zip -d /tmp/
+          sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+          sudo chmod +x /usr/local/bin/chromedriver
           pip install selenium beautifulsoup4
 
+      - name: Run script
+        run: python fetch_telecom_ips.py
 
-      - name: Run fetch script
+      - name: Commit and push
         run: |
-          python fetch_telecom_ips.py
-
-      - name: Commit and push changes
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "action@github.com"
+          git config --global user.email "action@github.com"
+          git config --global user.name "github-actions"
           git add china_telecom_ips.txt
-          git commit -m "Auto update telecom IPs" || echo "No changes to commit"
+          git commit -m "Auto update telecom IPs" || echo "No changes"
           git push
