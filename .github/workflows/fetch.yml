@@ -1,0 +1,39 @@
+name: Fetch Telecom IPs
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: "0 * * * *"  # 每小时执行一次
+  workflow_dispatch:
+
+jobs:
+  update_ips:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run script
+        run: |
+          python fetch_ip.py
+          echo "---- 抓取结果 ----"
+          cat china_telecom_ips.txt
+
+      - name: Commit and push always
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          date > last_run.txt
+          git add china_telecom_ips.txt last_run.txt
+          git commit -m "Auto update telecom IPs $(date)"
+          git push
