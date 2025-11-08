@@ -1,0 +1,37 @@
+name: Update Telecom IPs
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # 每小时运行一次
+  workflow_dispatch:       # 允许手动触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y chromium-browser chromium-chromedriver
+          pip install -r requirements.txt
+
+      - name: Run fetch script
+        run: |
+          python fetch_telecom_ips.py
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "action@github.com"
+          git add china_telecom_ips.txt
+          git commit -m "Auto update telecom IPs" || echo "No changes to commit"
+          git push
